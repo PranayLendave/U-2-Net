@@ -160,11 +160,13 @@ for epoch in range(0, epoch_num):
         running_tar_loss += loss2.data.item()
 
         # del temporary outputs and loss
-        del d0, d1, d2, d3, d4, d5, d6, loss2, loss
+
 
         dice = dice_score(torch.sigmoid(d0).detach().cuda(), labels.cuda())
         iou = iou_score(torch.sigmoid(d0).detach().cuda(), labels.cuda())
 
+        del d0, d1, d2, d3, d4, d5, d6, loss2, loss
+        
         # Print statistics including Dice Score and IoU
         print("[epoch: %3d/%3d, batch: %5d/%5d, ite: %d] train loss: %3f, tar: %3f, Dice Score: %3f, IoU: %3f" % (
         epoch + 1, epoch_num, (i + 1) * batch_size_train, train_num, ite_num,
