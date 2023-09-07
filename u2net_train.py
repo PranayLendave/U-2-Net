@@ -9,6 +9,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 import torch.optim as optim
 import torchvision.transforms as standard_transforms
+from sklearn.metrics import jaccard_score
+
 
 import numpy as np
 import glob
@@ -43,6 +45,15 @@ def muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels_v):
 
 	return loss0, loss
 
+def dice_score(pred, target):
+    smooth = 1e-5
+    intersection = (pred * target).sum()
+    union = pred.sum() + target.sum()
+    return (2.0 * intersection + smooth) / (union + smooth)
+
+def iou_score(pred, target): 
+    return jaccard_score(target.view(-1).cpu().numpy(), pred.view(-1).cpu().numpy())
+ 
 
 # ------- 2. set the directory of training dataset --------
 
@@ -151,8 +162,13 @@ for epoch in range(0, epoch_num):
         # del temporary outputs and loss
         del d0, d1, d2, d3, d4, d5, d6, loss2, loss
 
-        print("[epoch: %3d/%3d, batch: %5d/%5d, ite: %d] train loss: %3f, tar: %3f " % (
-        epoch + 1, epoch_num, (i + 1) * batch_size_train, train_num, ite_num, running_loss / ite_num4val, running_tar_loss / ite_num4val))
+        dice = dice_score(torch.sigmoid(d0).detach().cuda(), labels.cuda())
+        iou = iou_score(torch.sigmoid(d0).detach().cuda(), labels.cuda())
+
+        # Print statistics including Dice Score and IoU
+        print("[epoch: %3d/%3d, batch: %5d/%5d, ite: %d] train loss: %3f, tar: %3f, Dice Score: %3f, IoU: %3f" % (
+        epoch + 1, epoch_num, (i + 1) * batch_size_train, train_num, ite_num,
+        running_loss / ite_num4val, running_tar_loss / ite_num4val, dice, iou))
 
         if ite_num % save_frq == 0:
 
