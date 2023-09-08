@@ -40,10 +40,14 @@ from model import U2NETP
 wandb.init(project="inspeklab", config={
     "learning_rate": 0.001,
     "batch_size_train": 12,
+    "loss function": "DICE Loss"
     # Add more hyperparameters as needed
 })
 
 # ------- 1. define loss function --------
+
+loss_function_name = 'muti_dice_loss'
+
 
 # Define the Dice Loss function
 def dice_loss(pred, target):
@@ -83,6 +87,8 @@ def iou_score(pred, target):
 # ------- 2. set the directory of training dataset --------
 
 model_name = 'u2net' #'u2netp'
+
+checkpoint_dir = '/content/U-2-Net/saved_models'
 
 data_dir_train = os.path.join(os.getcwd(), 'dataset' + os.sep +'train' + os.sep)
 tra_image_dir = os.path.join('Image' + os.sep)
@@ -289,5 +295,12 @@ for epoch in range(0, epoch_num):
         "Validation Dice Score": val_dice,
         "Validation IoU": val_iou
     })
+
+checkpoint_name = f"{model_name}_{loss_function_name}_checkpoint_epoch_{epoch + 1}"
+checkpoint_dir_path = os.path.join(checkpoint_dir, checkpoint_name)
+os.makedirs(checkpoint_dir_path, exist_ok=True)
+checkpoint_path = os.path.join(checkpoint_dir, checkpoint_name,checkpoint_name+".pth")
+torch.save(net.state_dict(), checkpoint_path)
+print(f"Model checkpoint saved at {checkpoint_path}")
 
 wandb.finish()

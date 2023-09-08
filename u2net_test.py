@@ -54,12 +54,12 @@ def save_output(image_name,pred,d_dir):
 def main():
 
     # --------- 1. get image path and name ---------
-    model_name='u2net'#u2netp
+    model_name='u2net_muti_dice_loss_checkpoint_epoch_100'#u2netp
 
 
 
     image_dir = "/content/U-2-Net/train_data/cars/dataset/Image"
-    prediction_dir = os.path.join(os.getcwd(), 'train_data', model_name + '_results' + os.sep)
+    prediction_dir = os.path.join("/content/U-2-Net/train_data/cars/dataset", model_name + '_results' + os.sep)
     model_dir = os.path.join(os.getcwd(), 'saved_models', model_name, model_name + '.pth')
 
     img_name_list = glob.glob(image_dir + os.sep + '*')
