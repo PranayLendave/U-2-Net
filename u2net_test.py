@@ -21,6 +21,9 @@ from data_loader import SalObjDataset
 from model import U2NET # full size version 173.6 MB
 from model import U2NETP # small version u2net 4.7 MB
 
+import argparse
+
+
 # normalize the predicted SOD probability map
 def normPRED(d):
     ma = torch.max(d)
@@ -52,14 +55,18 @@ def save_output(image_name,pred,d_dir):
     imo.save(d_dir+imidx+'.png')
 
 def main():
+    parser = argparse.ArgumentParser(description="Your description here")
+    parser.add_argument("--model_name", type=str, required=True, help="Name of the model")
+    parser.add_argument("--image_dir", type=str, required=True, help="Path to the image directory")
+    args = parser.parse_args()
 
     # --------- 1. get image path and name ---------
-    model_name='u2net_muti_dice_loss_checkpoint_epoch_100'#u2netp
+    model_name = args.model_name#u2netp
 
 
 
-    image_dir = "/content/U-2-Net/train_data/cars/dataset/Image"
-    prediction_dir = os.path.join("/content/U-2-Net/train_data/cars/dataset", model_name + '_results' + os.sep)
+    image_dir = args.image_dir
+    prediction_dir = os.path.join("/content/U-2-Net/runs", model_name + '_results' + os.sep)
     model_dir = os.path.join(os.getcwd(), 'saved_models', model_name, model_name + '.pth')
 
     img_name_list = glob.glob(image_dir + os.sep + '*')
@@ -78,13 +85,14 @@ def main():
                                         num_workers=1)
 
     # --------- 3. model define ---------
-    if(model_name=='u2net'):
-        print("...load U2NET---173.6 MB")
-        net = U2NET(3,1)
-    elif(model_name=='u2netp'):
-        print("...load U2NEP---4.7 MB")
-        net = U2NETP(3,1)
-
+    # if(model_name=='u2net'):
+    #     print("...load U2NET---173.6 MB")
+    #     net = U2NET(3,1)
+    # elif(model_name=='u2netp'):
+    #     print("...load U2NEP---4.7 MB")
+    #     net = U2NETP(3,1)
+    
+    net = U2NET(3,1)
     if torch.cuda.is_available():
         net.load_state_dict(torch.load(model_dir))
         net.cuda()
