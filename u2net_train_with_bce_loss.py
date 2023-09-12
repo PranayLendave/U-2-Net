@@ -61,7 +61,7 @@ def muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels_v):
 	loss6 = bce_loss(d6,labels_v)
 
 	loss = loss0 + loss1 + loss2 + loss3 + loss4 + loss5 + loss6
-	print("l0: %3f, l1: %3f, l2: %3f, l3: %3f, l4: %3f, l5: %3f, l6: %3f\n"%(loss0.data.item(),loss1.data.item(),loss2.data.item(),loss3.data.item(),loss4.data.item(),loss5.data.item(),loss6.data.item()))
+	# print("l0: %3f, l1: %3f, l2: %3f, l3: %3f, l4: %3f, l5: %3f, l6: %3f\n"%(loss0.data.item(),loss1.data.item(),loss2.data.item(),loss3.data.item(),loss4.data.item(),loss5.data.item(),loss6.data.item()))
 
 	return loss0, loss
 
@@ -95,7 +95,7 @@ label_ext = '.png'
 
 model_dir = os.path.join(os.getcwd(), 'saved_models', model_name + os.sep)
 
-epoch_num = 100
+epoch_num = 200
 batch_size_train = 12
 batch_size_val = 1
 train_num = 0

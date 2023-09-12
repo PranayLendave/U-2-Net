@@ -148,6 +148,16 @@ def main():
     background_path = args.background_path
     save_dir = args.save_dir
 
+    folder_name = save_dir
+
+# Check if the folder exists
+    if not os.path.exists(folder_name):
+        # If it doesn't exist, create it
+        os.makedirs(folder_name)
+        print(f"Folder '{folder_name}' created successfully.")
+    else:
+        print(f"Folder '{folder_name}' already exists.")
+
     image_files = sorted(glob.glob(image_dir + '/*'))
     mask_files = sorted(glob.glob(mask_dir + '/*'))
     background = cv2.imread(background_path)
