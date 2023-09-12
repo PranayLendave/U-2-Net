@@ -1,6 +1,47 @@
 import cv2
 import numpy as np
-from google.colab.patches import cv2_imshow
+import glob
+# from google.colab.patches import cv2_imshow
+import os
+import argparse
+
+
+def detect_car_orientation(masked_image):
+    # Convert the masked image to grayscale
+    gray = cv2.cvtColor(masked_image, cv2.COLOR_BGR2GRAY)
+
+    # Find contours in the grayscale image
+    contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if len(contours) == 0:
+        return "Orientation undetermined", None  # No car detected in the image
+
+    # Assuming that the largest contour corresponds to the car
+    largest_contour = max(contours, key=cv2.contourArea)
+
+    # Fit an oriented bounding box to the largest contour
+    rect = cv2.minAreaRect(largest_contour)
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+
+    x = box[:,0]
+    y = box[:,1]
+
+    width = np.max(x) - np.min(x)
+    height = np.max(y) - np.min(y)
+
+    if width > height:
+      orientation = "Horizontal"
+    else:
+      orientation = "Vertical"
+
+    return orientation
+
+def get_rotated_image(unrotated_image):
+
+  rotated_image = cv2.rotate(unrotated_image, cv2.ROTATE_90_CLOCKWISE)
+  return rotated_image
+
 
 def detect_car_shadow(original_image, segmentation_mask):
     # Convert the images to grayscale if they are not already.
@@ -32,60 +73,100 @@ def detect_car_shadow(original_image, segmentation_mask):
 
     car_shadow_mask = 255-cv2.subtract(shadow_mask, segmentation_mask)
 
-    kernel = np.ones((9,9), np.uint8)  
+    kernel = np.ones((9,9), np.uint8)
     closing = cv2.morphologyEx(car_shadow_mask, cv2.MORPH_CLOSE, kernel)
     mask_with_shadow = cv2.morphologyEx(closing, cv2.MORPH_OPEN, kernel)
 
     return mask_with_shadow
 
 
-image_1 = cv2.imread('/content/U-2-Net/dataset/Image/20.jpg')  # Replace 'image_1.jpg' with the actual filename/path of your car image
-image_2 = cv2.imread('/content/background.jpg')
-image_2 = cv2.resize(image_2, (1920, 1080), interpolation=cv2.INTER_AREA)
-car_mask = cv2.imread('/content/U-2-Net/dataset/Mask/20.png', cv2.IMREAD_GRAYSCALE)
+def add_car_virtualbg(image_1,car_mask,image_2):
+    # print("image_1")
+    # cv2_imshow(image_1)
+    # print("car_mask")
+    # cv2_imshow(car_mask)
+    
+    image_2 = cv2.resize(image_2, (1920, 1080), interpolation=cv2.INTER_AREA)
+    # print("image_2")
+    # cv2_imshow(image_2)
+    car_shadow_mask = detect_car_shadow(image_1, car_mask)
+    car_mask_bgr = cv2.cvtColor(car_shadow_mask, cv2.COLOR_GRAY2BGR)
+    car_mask_gray = cv2.cvtColor(car_mask_bgr, cv2.COLOR_BGR2GRAY)
+    # print("car_mask_gray")
+    # cv2_imshow(car_mask_gray)
+    contours, hierarchy = cv2.findContours(car_mask_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    c = max(contours, key=cv2.contourArea)
+    x,y,w,h = cv2.boundingRect(c)
 
-car_shadow_mask = detect_car_shadow(image_1, car_mask)
+    car = cv2.bitwise_and(image_1, car_mask_bgr)
 
-car_mask_bgr = cv2.cvtColor(car_shadow_mask, cv2.COLOR_GRAY2BGR)
-# cv2_imshow(car_mask_bgr)
+    # Extract car image using bounding box
+    car_img = car[y:y+h, x:x+w]
+    car_mask_a = car_mask_bgr[y:y+h, x:x+w]
+    # print("car_img")
+    # cv2_imshow(car_img)
+    # print("car_mask_a")
+    # cv2_imshow(car_mask_a)
 
-car_mask_gray = cv2.cvtColor(car_mask_bgr, cv2.COLOR_BGR2GRAY)
+    x_position , y_position = 0,image_2.shape[0]-car_img.shape[0]
 
-contours, hierarchy = cv2.findContours(car_mask_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    ratio = car_img.shape[0]/car_img.shape[1]
+    new_width  = int(image_2.shape[1]*0.70)
+    new_height = int(new_width*ratio)
 
-c = max(contours, key=cv2.contourArea)
-x,y,w,h = cv2.boundingRect(c)
+    resized_car = cv2.resize(car_img, (new_width, new_height))
+    resized_mask = cv2.resize(car_mask_a, (new_width, new_height))
 
-car = cv2.bitwise_and(image_1, car_mask_bgr)
-# cv2_imshow(car)
-# Extract car image using bounding box
-car_img = car[y:y+h, x:x+w]
-car_mask_a = car_mask_bgr[y:y+h, x:x+w]
-# cv2_imshow(car_img)
-# cv2_imshow(car_mask_a)
+    x_position = (image_2.shape[1] - new_width)//2
+    y_position = image_2.shape[0]-resized_car.shape[0]-int(image_2.shape[0]*0.05)
 
-x_position , y_position = 0,image_2.shape[0]-car_img.shape[0]
+    new_x, new_y = (x_position, y_position)
 
-# new_width , new_height = int(car_img.shape[1]*0.70), int(car_img.shape[0]*0.70)
-ratio = car_img.shape[0]/car_img.shape[1]
-new_width  = int(image_2.shape[1]*0.70)
-new_height = int(new_width*ratio)
+    result = np.zeros_like(image_2)
+    result_mask = np.zeros_like(image_2)
 
-resized_car = cv2.resize(car_img, (new_width, new_height))
-resized_mask = cv2.resize(car_mask_a, (new_width, new_height))
+    result[new_y:new_y + new_height, new_x:new_x + new_width] = resized_car
+    result_mask[new_y:new_y + new_height, new_x:new_x + new_width] = resized_mask
 
-x_position = (image_2.shape[1] - new_width)//2
-y_position = image_2.shape[0]-resized_car.shape[0]-int(image_2.shape[0]*0.05)
+    background_mask = 255 - result_mask
+    background = cv2.bitwise_and(image_2, background_mask)
+    car_virtual = cv2.add(result, background)
 
-new_x, new_y = (x_position, y_position)
+    return car_virtual
 
-result = np.zeros_like(image_2)
-result_mask = np.zeros_like(image_2)
 
-result[new_y:new_y + new_height, new_x:new_x + new_width] = resized_car
-result_mask[new_y:new_y + new_height, new_x:new_x + new_width] = resized_mask
+def main():
+    parser = argparse.ArgumentParser(description="Your description here")
+    parser.add_argument("--image_dir", type=str, required=True, help="Path to the image directory")
+    parser.add_argument("--mask_dir", type=str, required=True, help="Path to the mask directory")
+    parser.add_argument("--background_path", type=str, required=True, help="Path to the background image")
+    parser.add_argument("--save_dir", type=str, required=True, help="Path to the output directory")
+    args = parser.parse_args()
 
-background_mask = 255 - result_mask
-background = cv2.bitwise_and(image_2, background_mask)
-car_virtual = cv2.add(result, background)
-cv2_imshow(car_virtual)
+    image_dir = args.image_dir
+    mask_dir = args.mask_dir
+    background_path = args.background_path
+    save_dir = args.save_dir
+
+    image_files = sorted(glob.glob(image_dir + '/*'))
+    mask_files = sorted(glob.glob(mask_dir + '/*'))
+    background = cv2.imread(background_path)
+    for i in range(0,len(image_files)):
+        input_image = cv2.imread(image_files[i])
+        mask_image = cv2.imread(mask_files[i])
+        orientation = detect_car_orientation(mask_image)
+        if orientation == "Vertical":
+            input_image = get_rotated_image(input_image)
+            mask_image = get_rotated_image(mask_image)
+        car_virtual = add_car_virtualbg(input_image,mask_image,background)
+
+        img_name = image_files[i].split(os.sep)[-1]
+        aaa = img_name.split(".")
+        bbb = aaa[0:-1]
+        imidx = bbb[0]
+        prediction_dir = save_dir+os.sep+imidx+".png"
+        cv2.imwrite(prediction_dir, car_virtual)
+
+
+if __name__ == "__main__":
+    main()
