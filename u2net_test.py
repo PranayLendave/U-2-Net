@@ -68,7 +68,7 @@ def main():
     image_dir = args.image_dir
     prediction_dir = os.path.join("/content/U-2-Net/runs", model_name + '_results' + os.sep)
     model_dir = os.path.join(os.getcwd(), 'saved_models', model_name, model_name + '.pth')
-
+    
     img_name_list = glob.glob(image_dir + os.sep + '*')
     print(img_name_list)
 
